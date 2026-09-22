@@ -1,0 +1,19 @@
+{
+  "name": "snn-sports-proposal-generator",
+  "version": "1.0.0",
+  "description": "SNN Sports Sponsorship Proposal Generator - standalone app",
+  "private": true,
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "playwright": "1.63.0",
+    "pdf-lib": "^1.17.1"
+  }
+}

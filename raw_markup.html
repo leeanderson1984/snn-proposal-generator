@@ -1,0 +1,704 @@
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <div class="brand-mark">SNN</div>
+        <div class="brand-text">
+          <div class="brand-title">SNN Sports</div>
+          <div class="brand-sub">Proposal Generator</div>
+        </div>
+      </div>
+      <sc-if value="{{hasCurrentName}}" hint-placeholder-val="{{true}}">
+        <div class="current-name">{{currentDisplayName}}</div>
+      </sc-if>
+      <div class="topbar-spacer"></div>
+      <sc-if value="{{flashMessage}}" hint-placeholder-val="{{true}}">
+        <div class="flash">{{flashMessage}}</div>
+      </sc-if>
+      <div class="statuspill-select">
+        <select class="status-select" value="{{statusValue}}" onChange="{{onStatusChange}}">
+          <sc-for list="{{statusOptions}}" as="opt" hint-placeholder-count="5">
+            <option value="{{opt.value}}">{{opt.label}}</option>
+          </sc-for>
+        </select>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost-on-blue" onClick="{{goList}}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18"></path></svg>
+          All Proposals ({{proposalCount}})
+        </button>
+        <button class="btn btn-ghost-on-blue" onClick="{{newProposal}}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
+          New
+        </button>
+        <button class="btn btn-primary-on-blue" onClick="{{saveProposal}}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
+          Save
+        </button>
+      </div>
+    </div>
+    <div class="tabbar">
+      <sc-if value="{{isBuilderScreen}}" hint-placeholder-val="{{true}}">
+      <div class="tabbar-row">
+        <sc-for list="{{navTabs}}" as="t" hint-placeholder-count="8">
+          <button class="{{t.className}}" onClick="{{t.onClick}}">
+            <span class="tabnum">{{t.num}}</span>{{t.label}}
+            <sc-if value="{{t.showDot}}" hint-placeholder-val="{{false}}"><span class="tab-dot" title="Section has content"></span></sc-if>
+          </button>
+        </sc-for>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div class="shell">
+
+    <sc-if value="{{hasPendingAction}}" hint-placeholder-val="{{false}}">
+      <div class="panel unsaved-banner no-print">
+        <div class="unsaved-banner-text"><strong>Unsaved changes</strong> on the current proposal. Save before continuing, or discard them?</div>
+        <div class="unsaved-banner-actions">
+          <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{onSaveAndContinue}}">Save &amp; Continue</button>
+          <button class="link-btn danger" onClick="{{onDiscardAndContinue}}">Discard Changes</button>
+          <button class="link-btn" onClick="{{onCancelPending}}">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ PROPOSALS LIST SCREEN ============ -->
+    <sc-if value="{{isListScreen}}" hint-placeholder-val="{{false}}">
+    <div class="panel">
+      <div class="list-toolbar">
+        <div>
+          <h2 class="panel-title">Saved Proposals</h2>
+          <div class="panel-hint">Stored in this browser. Open one to continue editing, or start a new proposal.</div>
+        </div>
+        <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{newProposal}}">+ New Proposal</button>
+      </div>
+
+      <div class="pipeline-strip no-print">
+        <div class="pipeline-stat">
+          <div class="pipeline-num">{{proposalsSummary.count}}</div>
+          <div class="pipeline-label">Total proposals</div>
+        </div>
+        <div class="pipeline-stat">
+          <div class="pipeline-num">{{proposalsSummary.activeValueDisplay}}</div>
+          <div class="pipeline-label">Active pipeline (Sent + Negotiating)</div>
+        </div>
+        <div class="pipeline-stat">
+          <div class="pipeline-num">{{proposalsSummary.wonValueDisplay}}</div>
+          <div class="pipeline-label">Won ({{proposalsSummary.wonCount}})</div>
+        </div>
+      </div>
+
+      <div class="field no-print" style="max-width:360px;margin-bottom:18px;">
+        <label>Search</label>
+        <input type="text" value="{{proposalSearchValue}}" onChange="{{onProposalSearchChange}}" placeholder="Search by client, campaign or contact...">
+      </div>
+
+      <sc-if value="{{hasProposals}}" hint-placeholder-val="{{true}}">
+      <table class="proplist">
+        <thead><tr><th>Client</th><th>Campaign</th><th>Date</th><th>Value</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <sc-for list="{{proposalRows}}" as="row" hint-placeholder-count="3">
+            <tr>
+              <td><span class="row-client">{{row.company}}</span><sc-if value="{{row.isDemo}}" hint-placeholder-val="{{false}}"><span class="demo-tag">DEMO</span></sc-if><div class="row-sub">{{row.contact}}</div></td>
+              <td>{{row.campaign}}</td>
+              <td>{{row.dateDisplay}}</td>
+              <td>{{row.valueDisplay}}</td>
+              <td><span class="status-tag" style="{{row.statusStyle}}">{{row.status}}</span></td>
+              <td>
+                <sc-if value="{{row.confirmingDelete}}" hint-placeholder-val="{{false}}">
+                  <div class="confirm-bar">
+                    <span>Delete?</span>
+                    <button class="link-btn danger" onClick="{{row.onConfirmDelete}}">Yes</button>
+                    <button class="link-btn" onClick="{{row.onCancelDelete}}">No</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{row.showActions}}" hint-placeholder-val="{{true}}">
+                  <div class="row-actions">
+                    <button class="link-btn" onClick="{{row.onOpen}}">Open</button>
+                    <button class="link-btn" onClick="{{row.onDuplicate}}">Duplicate</button>
+                    <button class="link-btn danger" onClick="{{row.onAskDelete}}">Delete</button>
+                  </div>
+                </sc-if>
+              </td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      </sc-if>
+      <sc-if value="{{hasNoProposalsAtAll}}" hint-placeholder-val="{{false}}">
+        <div class="empty-state">No saved proposals yet. Build one and click Save to add it to this list.</div>
+      </sc-if>
+      <sc-if value="{{hasNoSearchResults}}" hint-placeholder-val="{{false}}">
+        <div class="empty-state">No proposals match "{{proposalSearchValue}}". <button class="link-btn" onClick="{{onClearProposalSearch}}" style="margin-left:6px;">Clear search</button></div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ============ BUILDER SCREEN ============ -->
+    <sc-if value="{{isBuilderScreen}}" hint-placeholder-val="{{true}}">
+
+      <!-- 1. CLIENT DETAILS -->
+      <sc-if value="{{isClientTab}}" hint-placeholder-val="{{true}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Client Details</h2>
+          <div class="panel-hint">Who the proposal is for, and the campaign it covers.</div>
+        </div>
+        <div class="grid grid-2">
+          <div class="field"><label>Company / Brand</label><input type="text" value="{{client.company}}" onChange="{{client.onCompany}}" placeholder="e.g. Highland Peaks Distillery"></div>
+          <div class="field"><label>Industry</label><input type="text" value="{{client.industry}}" onChange="{{client.onIndustry}}" placeholder="e.g. Spirits &amp; hospitality"></div>
+          <div class="field"><label>Contact Name</label><input type="text" value="{{client.contactName}}" onChange="{{client.onContactName}}" placeholder="e.g. Fiona Mackenzie"></div>
+          <div class="field"><label>Contact Job Title</label><input type="text" value="{{client.contactTitle}}" onChange="{{client.onContactTitle}}" placeholder="e.g. Marketing Director"></div>
+          <div class="field"><label>Email</label><input type="email" value="{{client.email}}" onChange="{{client.onEmail}}" placeholder="name@client.co.uk"></div>
+          <div class="field"><label>Website</label><input type="text" value="{{client.website}}" onChange="{{client.onWebsite}}" placeholder="www.client.co.uk"></div>
+          <div class="field"><label>Campaign Name</label><input type="text" value="{{client.campaignName}}" onChange="{{client.onCampaignName}}" placeholder="e.g. 2026/27 Season Partnership"></div>
+          <div class="field"><label>Proposal Date</label><input type="date" value="{{client.proposalDate}}" onChange="{{client.onProposalDate}}"></div>
+          <div class="field"><label>Campaign Start Date</label><input type="date" value="{{client.startDate}}" onChange="{{client.onStartDate}}"></div>
+          <div class="field"><label>Campaign End Date</label><input type="date" value="{{client.endDate}}" onChange="{{client.onEndDate}}"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Load from Deal Tracker</h2>
+          <div class="panel-hint">Search the SNN Sports Deal Tracker snapshot (synced {{crm.syncedDisplay}}) and pull a prospect's details straight in. This is a manual snapshot, not a live link — ask Claude to refresh it with the latest deals and leads whenever you need up-to-date records.</div>
+        </div>
+        <div class="field">
+          <label>Search company or contact</label>
+          <input type="text" value="{{crm.search}}" onChange="{{crm.onSearch}}" placeholder="Start typing a company or contact name...">
+        </div>
+        <sc-if value="{{crm.hasResults}}" hint-placeholder-val="{{false}}">
+          <div class="crm-results">
+            <sc-for list="{{crm.results}}" as="r" hint-placeholder-count="3">
+              <div class="crm-result">
+                <div class="crm-result-main">
+                  <span class="crm-result-name">{{r.name}}</span>
+                  <span class="crm-result-stage">{{r.stage}}</span>
+                </div>
+                <div class="crm-result-sub">{{r.subline}}</div>
+                <button class="link-btn" onClick="{{r.onUse}}">Use this</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{crm.hasNoResults}}" hint-placeholder-val="{{false}}">
+          <div class="empty-state" style="padding:14px;">No matches in the Deal Tracker snapshot for "{{crm.search}}".</div>
+        </sc-if>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Logos</h2>
+          <div class="panel-hint">Optional. Uploaded logos appear on the proposal cover page.</div>
+        </div>
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Client Logo</label>
+            <div class="logo-drop">
+              <div class="logo-preview">
+                <sc-if value="{{logos.hasClient}}" hint-placeholder-val="{{false}}"><img src="{{logos.clientSrc}}"></sc-if>
+                <sc-if value="{{logos.hasNoClient}}" hint-placeholder-val="{{true}}"><span style="font-size:10px;color:var(--ink-faint);text-align:center;">No logo — company name will be used</span></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div class="file-btn btn" style="border:1px solid var(--line-strong);color:var(--ink);"><input type="file" accept="image/*" onChange="{{logos.onClientUpload}}">Upload logo</div>
+                <sc-if value="{{logos.hasClient}}" hint-placeholder-val="{{false}}"><button class="link-btn" onClick="{{logos.onClientRemove}}">Remove</button></sc-if>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>SNN Sports Logo (optional override)</label>
+            <div class="logo-drop">
+              <div class="logo-preview">
+                <sc-if value="{{logos.hasSnn}}" hint-placeholder-val="{{false}}"><img src="{{logos.snnSrc}}"></sc-if>
+                <sc-if value="{{logos.hasNoSnn}}" hint-placeholder-val="{{true}}"><span style="font-size:10px;color:var(--ink-faint);text-align:center;">Using SNN wordmark</span></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div class="file-btn btn" style="border:1px solid var(--line-strong);color:var(--ink);"><input type="file" accept="image/*" onChange="{{logos.onSnnUpload}}">Upload logo</div>
+                <sc-if value="{{logos.hasSnn}}" hint-placeholder-val="{{false}}"><button class="link-btn" onClick="{{logos.onSnnRemove}}">Remove</button></sc-if>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- 2. CAMPAIGN OBJECTIVE -->
+      <sc-if value="{{isObjectivesTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Campaign Objective</h2>
+          <div class="panel-hint">Select one or more — this shapes the Opportunity section of the proposal.</div>
+        </div>
+        <div class="chiprow">
+          <sc-for list="{{objectivesList}}" as="o" hint-placeholder-count="9">
+            <button class="{{o.chipClass}}" onClick="{{o.onToggle}}">{{o.label}}</button>
+          </sc-for>
+        </div>
+        <div class="field" style="margin-top:22px;">
+          <label>Campaign objectives / notes</label>
+          <textarea rows="4" value="{{objectivesNotes}}" onChange="{{onObjectivesNotesChange}}" placeholder="Any additional context on what the client is trying to achieve..."></textarea>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- 3. PACKAGE BUILDER -->
+      <sc-if value="{{isPackageTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Package Builder</h2>
+          <div class="panel-hint">Add deliverables. Everything here is editable and removable.</div>
+        </div>
+
+        <sc-if value="{{hasDeliverables}}" hint-placeholder-val="{{false}}">
+          <sc-for list="{{deliverables}}" as="d" hint-placeholder-count="2">
+            <div class="deliv-card">
+              <div class="deliv-top">
+                <span class="deliv-index">Deliverable {{d.index}}</span>
+                <button class="icon-btn" onClick="{{d.onRemove}}" title="Remove">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"></path></svg>
+                </button>
+              </div>
+              <div class="grid grid-2">
+                <div class="field" style="grid-column:1/-1;"><label>Deliverable Name</label><input type="text" value="{{d.name}}" onChange="{{d.onName}}" placeholder="e.g. Sponsored social posts"></div>
+                <div class="field" style="grid-column:1/-1;"><label>Description</label><textarea rows="2" value="{{d.description}}" onChange="{{d.onDescription}}" placeholder="What this involves..."></textarea></div>
+                <div class="field"><label>Quantity</label><input type="text" value="{{d.quantity}}" onChange="{{d.onQuantity}}" placeholder="e.g. 4"></div>
+                <div class="field"><label>Frequency</label><input type="text" value="{{d.frequency}}" onChange="{{d.onFrequency}}" placeholder="e.g. Weekly"></div>
+                <div class="field"><label>Duration</label><input type="text" value="{{d.duration}}" onChange="{{d.onDuration}}" placeholder="e.g. Throughout campaign"></div>
+                <div class="field"><label>Notes (optional)</label><input type="text" value="{{d.notes}}" onChange="{{d.onNotes}}" placeholder="Optional notes"></div>
+              </div>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{hasNoDeliverables}}" hint-placeholder-val="{{true}}">
+          <div class="empty-state">No deliverables added yet. Use a suggestion below or add a blank deliverable.</div>
+        </sc-if>
+
+        <div style="margin-top:16px;">
+          <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{onAddBlankDeliverable}}">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
+            Add Deliverable
+          </button>
+        </div>
+
+        <div class="suggest-row">
+          <sc-for list="{{deliverableSuggestions}}" as="s" hint-placeholder-count="8">
+            <button class="suggest-chip" onClick="{{s.onAdd}}">+ {{s.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- 4. COMMERCIAL TERMS -->
+      <sc-if value="{{isCommercialTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Commercial Terms</h2>
+          <div class="panel-hint">Choose a pricing model, then enter the figures — totals update automatically.</div>
+        </div>
+
+        <div class="field" style="margin-bottom:18px;">
+          <label>Pricing Model</label>
+          <div class="segrow">
+            <sc-for list="{{pricingModels}}" as="m" hint-placeholder-count="5">
+              <button class="{{m.className}}" onClick="{{m.onSelect}}">{{m.label}}<span class="seg-sub">{{m.sub}}</span></button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="grid grid-3">
+          <sc-if value="{{commercial.showMonthlyFee}}" hint-placeholder-val="{{true}}">
+            <div class="field"><label>Monthly Fee (£)</label><input type="number" min="0" step="0.01" value="{{commercial.monthlyFee}}" onChange="{{commercial.onMonthlyFee}}"></div>
+          </sc-if>
+          <sc-if value="{{commercial.showOneOffFee}}" hint-placeholder-val="{{true}}">
+            <div class="field"><label>One-off Campaign Fee (£)</label><input type="number" min="0" step="0.01" value="{{commercial.oneOffFee}}" onChange="{{commercial.onOneOffFee}}"></div>
+          </sc-if>
+          <div class="field"><label>Setup Fee (£)</label><input type="number" min="0" step="0.01" value="{{commercial.setupFee}}" onChange="{{commercial.onSetupFee}}"></div>
+          <div class="field"><label>Campaign Duration (months)</label><input type="number" min="0" step="1" value="{{commercial.durationMonths}}" onChange="{{commercial.onDurationMonths}}"></div>
+          <div class="field"><label>Commission (%)</label><input type="number" min="0" step="0.1" value="{{commercial.commissionPercent}}" onChange="{{commercial.onCommissionPercent}}"></div>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:16px;">
+          <div class="field">
+            <label>Discount</label>
+            <div class="segrow">
+              <sc-for list="{{discountTypes}}" as="dt" hint-placeholder-count="2">
+                <button class="{{dt.className}}" onClick="{{dt.onSelect}}">{{dt.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div class="field"><label>Discount Value {{discountUnitLabel}}</label><input type="number" min="0" step="0.01" value="{{commercial.discountValue}}" onChange="{{commercial.onDiscountValue}}"></div>
+          <div class="field">
+            <label>VAT</label>
+            <select value="{{commercial.vatOption}}" onChange="{{commercial.onVatOption}}">
+              <sc-for list="{{vatOptions}}" as="v" hint-placeholder-count="3">
+                <option value="{{v.value}}">{{v.label}}</option>
+              </sc-for>
+            </select>
+          </div>
+        </div>
+        <sc-if value="{{commercial.showVatRate}}" hint-placeholder-val="{{true}}">
+          <div class="grid grid-3" style="margin-top:16px;">
+            <div class="field"><label>VAT Rate (%)</label><input type="number" min="0" step="0.5" value="{{commercial.vatRate}}" onChange="{{commercial.onVatRate}}"></div>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:20px;">
+          <label style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:10px;">Performance-based Commission</label>
+          <div class="checkbox-row">
+            <input type="checkbox" checked="{{commercial.performanceEnabled}}" onChange="{{commercial.onPerformanceEnabled}}">
+            <div>
+              <div class="cb-label">Include an optional performance-based commission arrangement</div>
+              <div class="cb-sub">Describe the arrangement below — this is shown alongside the fixed fee, not instead of it.</div>
+            </div>
+          </div>
+          <sc-if value="{{commercial.performanceEnabled}}" hint-placeholder-val="{{false}}">
+            <div class="field" style="margin-top:12px;"><textarea rows="2" value="{{commercial.performanceNotes}}" onChange="{{commercial.onPerformanceNotes}}" placeholder="e.g. Additional 5% commission on sales directly attributed to tracked campaign links"></textarea></div>
+          </sc-if>
+        </div>
+
+        <div style="margin-top:22px;">
+          <div class="totals-card">
+            <div class="totals-line"><span>Subtotal</span><span class="val">{{totals.baseDisplay}}</span></div>
+            <sc-if value="{{totals.hasDiscount}}" hint-placeholder-val="{{false}}">
+              <div class="totals-line"><span>Discount</span><span class="val">−{{totals.discountDisplay}}</span></div>
+            </sc-if>
+            <sc-if value="{{totals.showVatLine}}" hint-placeholder-val="{{false}}">
+              <div class="totals-line"><span>{{totals.vatLineLabel}}</span><span class="val">{{totals.vatDisplay}}</span></div>
+            </sc-if>
+            <div class="totals-line emph"><span>Total Campaign Value</span><span class="val">{{totals.totalDisplay}}</span></div>
+            <sc-if value="{{totals.showMonthlyEquivalent}}" hint-placeholder-val="{{false}}">
+              <div class="totals-line"><span>Monthly Equivalent</span><span class="val">{{totals.monthlyEquivalentDisplay}}</span></div>
+            </sc-if>
+            <sc-if value="{{totals.hasCommission}}" hint-placeholder-val="{{false}}">
+              <div class="totals-line"><span>Commission ({{totals.commissionPercentDisplay}})</span><span class="val">{{totals.potentialCommissionDisplay}}</span></div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div class="checkbox-row" style="margin-top:18px;">
+          <input type="checkbox" checked="{{commercial.includeCommissionInProposal}}" onChange="{{commercial.onIncludeCommission}}">
+          <div>
+            <div class="cb-label">Show commission figures in the client-facing proposal</div>
+            <div class="cb-sub">Off by default. Commission and margin stay internal-only unless you switch this on.</div>
+          </div>
+        </div>
+
+        <div class="internal-block" style="margin-top:22px;">
+          <div class="internal-tag">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path></svg>
+            Private notes — never printed or included in the proposal
+          </div>
+          <div class="grid grid-2">
+            <div class="field"><label>Internal Notes</label><textarea rows="3" value="{{commercial.internalNotes}}" onChange="{{commercial.onInternalNotes}}" placeholder="Approval status, negotiation notes, risk flags..."></textarea></div>
+            <div class="field"><label>Margin Notes</label><textarea rows="3" value="{{commercial.marginNotes}}" onChange="{{commercial.onMarginNotes}}" placeholder="Cost basis, margin expectations..."></textarea></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- AUDIENCE STATS -->
+      <sc-if value="{{isStatsTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Audience Stats</h2>
+          <div class="panel-hint">These headline figures appear on page 3 of every proposal. Keep them current.</div>
+        </div>
+        <div class="grid grid-2">
+          <sc-for list="{{statsFields}}" as="st" hint-placeholder-count="8">
+            <div class="field"><label>{{st.label}}</label><input type="text" value="{{st.value}}" onChange="{{st.onValue}}"></div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- TERMS & CONDITIONS -->
+      <sc-if value="{{isTermsTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Terms &amp; Conditions</h2>
+          <div class="panel-hint">Appears on page 8 of the proposal. This is a starting template — have it reviewed by a solicitor before relying on it for higher-value or regulated agreements.</div>
+        </div>
+        <div class="field terms-field">
+          <label>Terms text</label>
+          <textarea rows="18" value="{{terms.value}}" onChange="{{terms.onChange}}"></textarea>
+        </div>
+        <div class="no-print" style="margin-top:14px;font-size:12px;color:var(--ink-faint);line-height:1.6;">
+          Longer terms automatically continue onto as many extra pages as needed in the exported PDF — nothing is cut off.
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- SIGN-OFF -->
+      <sc-if value="{{isSignatureTab}}" hint-placeholder-val="{{false}}">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Sign-off</h2>
+          <div class="panel-hint">Export the proposal from the Preview tab and send it to your client to sign — by hand (print, sign and scan back) or with their own e-signature tool. Once they've returned it signed, record the details below so the final page shows a clean, completed record for your files.</div>
+        </div>
+        <div class="sig-grid">
+          <div class="sig-card">
+            <h3>Client</h3>
+            <div class="grid" style="gap:12px;">
+              <div class="field"><label>Full Name (as signed)</label><input type="text" value="{{signature.clientName}}" onChange="{{signature.onClientName}}" placeholder="Fill in once they've signed and returned it"></div>
+              <div class="field"><label>Job Title</label><input type="text" value="{{signature.clientTitle}}" onChange="{{signature.onClientTitle}}" placeholder="e.g. Marketing Director"></div>
+              <div class="field"><label>Date Signed</label><input type="date" value="{{signature.clientDate}}" onChange="{{signature.onClientDate}}"></div>
+            </div>
+            <div class="checkbox-row accept-row">
+              <input type="checkbox" checked="{{signature.accepted}}" onChange="{{signature.onAccepted}}">
+              <div>
+                <div class="cb-label">Client has signed and accepted the Terms &amp; Conditions</div>
+                <div class="cb-sub">Tick once you've received their signed copy back. Keep their signed PDF or scan as the actual record — this just reflects that status here.</div>
+              </div>
+            </div>
+          </div>
+          <div class="sig-card">
+            <h3>SNN Sports</h3>
+            <div class="grid" style="gap:12px;">
+              <div class="field"><label>Typed Signature (full name)</label><input type="text" value="{{signature.snnName}}" onChange="{{signature.onSnnName}}"></div>
+              <div class="field"><label>Job Title</label><input type="text" value="{{signature.snnTitle}}" onChange="{{signature.onSnnTitle}}"></div>
+              <div class="field"><label>Date Signed</label><input type="date" value="{{signature.snnDate}}" onChange="{{signature.onSnnDate}}"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- 5. PROPOSAL PREVIEW -->
+      <sc-if value="{{isPreviewTab}}" hint-placeholder-val="{{false}}">
+
+      <div class="preview-toolbar no-print">
+        <div class="note">This preview shows the 10 core sections. If Terms &amp; Conditions, Deliverables or the Opportunity summary run long, your exported PDF automatically continues them onto extra pages — the PDF always has exactly as many pages as your proposal actually needs, never fewer, never blank ones.</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="link-btn" onClick="{{goEditFromPreview}}">Edit Details</button>
+          <button class="btn" onClick="{{onSavePdf}}" disabled="{{pdfBusy}}" style="background:var(--snn-blue);color:#fff;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font:inherit;">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2M6 14h12v7H6z"></path></svg>
+            {{pdfButtonLabel}}
+          </button>
+        </div>
+      </div>
+
+      <sc-if value="{{hasPdfError}}" hint-placeholder-val="{{false}}">
+        <div class="no-print" style="margin-bottom:16px;padding:12px 14px;background:#fdf0f0;border:1px solid #c94747;border-radius:8px;font-size:12.5px;color:#7a1f1f;">
+          <strong>PDF generation failed:</strong> {{pdfError}}
+        </div>
+      </sc-if>
+
+      <div class="proposal-pages">
+
+        <!-- PAGE 1 — COVER -->
+        <div class="pg pg-cover">
+          <div class="cover-top">
+            <div class="cover-snn-mark">SNN SPORTS</div>
+          </div>
+          <div>
+            <div class="cover-kicker">Sponsorship &amp; Media Partnership Proposal</div>
+            <h1 class="cover-title">{{preview.campaignTitle}}</h1>
+            <div class="cover-campaign">{{preview.campaignDateRange}}</div>
+            <div class="cover-client-row">
+              <div class="cover-client-logo">
+                <sc-if value="{{logos.hasClient}}" hint-placeholder-val="{{false}}"><img src="{{logos.clientSrc}}"></sc-if>
+                <sc-if value="{{logos.hasNoClient}}" hint-placeholder-val="{{true}}"><span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--snn-blue);font-size:22px;">{{preview.clientInitial}}</span></sc-if>
+              </div>
+              <div class="cover-client-name">{{preview.clientNameDisplay}}</div>
+            </div>
+          </div>
+          <div class="cover-bottom">
+            <div>
+              <div class="cover-prepared-label">Prepared by</div>
+              <div class="cover-prepared-name">Lee Anderson</div>
+              <div class="cover-prepared-sub">CEO, SNN Sports</div>
+            </div>
+            <div class="cover-date">{{preview.proposalDateDisplay}}</div>
+          </div>
+        </div>
+
+        <!-- PAGE 2 — ABOUT -->
+        <div class="pg">
+          <div class="pg-kicker">SNN Sports</div>
+          <h2 class="pg-title">About SNN Sports</h2>
+          <div class="about-copy">
+            <p>SNN Sports is a Scottish sports media platform built around football, delivering daily coverage and analysis across social, video and digital platforms. We follow the game closely — match by match, story by story — and put that coverage in front of an audience that is genuinely engaged with Scottish football.</p>
+            <p>Our content spans social video, matchday coverage, written articles and long-form features, distributed across Facebook, Instagram, TikTok, X and YouTube as well as our own website. That multi-platform approach lets us reach our audience where they already spend their time, rather than asking them to come to us.</p>
+            <p>For commercial partners, SNN Sports offers a direct route into a Scottish football audience through content that sits naturally alongside the coverage that audience already follows — rather than as separate, disconnected advertising.</p>
+          </div>
+          <div class="about-entity">SNN Sports is operated by 1606 Ltd t/a SNN Sports · www.snnsports.co.uk</div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 2 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 3 — AUDIENCE -->
+        <div class="pg">
+          <div class="pg-kicker">Our Audience</div>
+          <h2 class="pg-title">Reach &amp; Engagement</h2>
+          <div class="stats-grid">
+            <sc-for list="{{preview.statsTiles}}" as="st" hint-placeholder-count="8">
+              <div class="stat-tile">
+                <div class="stat-num">{{st.value}}</div>
+                <div class="stat-label">{{st.label}}</div>
+                <sc-if value="{{st.hasSub}}" hint-placeholder-val="{{false}}"><div class="stat-sub">{{st.sublabel}}</div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 3 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 4 — OPPORTUNITY -->
+        <div class="pg">
+          <div class="pg-kicker">The Opportunity</div>
+          <h2 class="pg-title">Why This Partnership, For {{preview.clientNameShort}}</h2>
+          <sc-if value="{{preview.hasObjectiveTags}}" hint-placeholder-val="{{false}}">
+            <div class="opp-tags">
+              <sc-for list="{{preview.objectiveTags}}" as="tag" hint-placeholder-count="3">
+                <span class="opp-tag">{{tag.label}}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-for list="{{preview.opportunityParagraphs}}" as="para" hint-placeholder-count="2">
+            <div class="opp-para">{{para.text}}</div>
+          </sc-for>
+          <sc-if value="{{preview.opportunityNotesPresent}}" hint-placeholder-val="{{false}}">
+            <div class="opp-para" style="margin-top:14px;"><strong>Additional context: </strong>{{objectivesNotes}}</div>
+          </sc-if>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 4 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 5 — PROPOSED PARTNERSHIP -->
+        <div class="pg">
+          <div class="pg-kicker">Proposed Partnership</div>
+          <h2 class="pg-title">Deliverables</h2>
+          <sc-if value="{{preview.hasDeliverables}}" hint-placeholder-val="{{false}}">
+            <sc-for list="{{preview.deliverables}}" as="d" hint-placeholder-count="3">
+              <div class="pdeliv">
+                <div class="pdeliv-name">{{d.name}}</div>
+                <sc-if value="{{d.hasMeta}}" hint-placeholder-val="{{false}}"><div class="pdeliv-meta">{{d.meta}}</div></sc-if>
+                <sc-if value="{{d.hasDescription}}" hint-placeholder-val="{{false}}"><div class="pdeliv-desc">{{d.description}}</div></sc-if>
+                <sc-if value="{{d.hasNotes}}" hint-placeholder-val="{{false}}"><div class="pdeliv-notes">{{d.notes}}</div></sc-if>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{preview.hasNoDeliverables}}" hint-placeholder-val="{{true}}">
+            <div class="empty-state">No deliverables added yet — add them in the Package Builder tab.</div>
+          </sc-if>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 5 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 6 — INVESTMENT -->
+        <div class="pg">
+          <div class="pg-kicker">Investment</div>
+          <h2 class="pg-title">Commercial Terms</h2>
+          <sc-for list="{{preview.investmentLines}}" as="ln" hint-placeholder-count="4">
+            <div class="{{ln.className}}"><span>{{ln.label}}</span><span class="val">{{ln.value}}</span></div>
+          </sc-for>
+          <div class="inv-note">{{preview.vatFootnote}}</div>
+          <sc-if value="{{preview.hasPerformanceNote}}" hint-placeholder-val="{{false}}">
+            <div class="inv-note"><strong>Performance-based commission: </strong>{{commercial.performanceNotes}}</div>
+          </sc-if>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 6 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 7 — WHY SNN SPORTS -->
+        <div class="pg">
+          <div class="pg-kicker">Why SNN Sports</div>
+          <h2 class="pg-title">A Direct Route Into Scottish Football</h2>
+          <div class="why-list">
+            <sc-for list="{{whyPoints}}" as="w" hint-placeholder-count="6">
+              <div class="why-item">
+                <div class="why-check">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"></path></svg>
+                </div>
+                <div class="why-text">{{w.text}}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 7 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 8 — TERMS & CONDITIONS -->
+        <div class="pg">
+          <div class="pg-kicker">Terms &amp; Conditions</div>
+          <h2 class="pg-title">Terms &amp; Conditions</h2>
+          <div class="terms-text">{{terms.value}}</div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 8 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 9 — NEXT STEPS -->
+        <div class="pg">
+          <div class="pg-kicker">Next Steps</div>
+          <h2 class="pg-title">Taking This Forward</h2>
+          <div class="next-copy">{{preview.nextStepsCopy}}</div>
+          <div class="contact-card">
+            <div class="contact-name">Lee Anderson</div>
+            <div class="contact-role">CEO, SNN Sports</div>
+            <div class="contact-links">
+              <span>lee@snnsports.co.uk</span>
+              <span>www.snnsports.co.uk</span>
+            </div>
+          </div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 9 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+        <!-- PAGE 10 — ACCEPTANCE & SIGNATURE -->
+        <div class="pg">
+          <div class="pg-kicker">Proposal Acceptance</div>
+          <h2 class="pg-title">Sign-off</h2>
+          <sc-if value="{{preview.acceptedTerms}}" hint-placeholder-val="{{false}}">
+            <div class="accept-banner yes">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"></path></svg>
+              Terms &amp; Conditions accepted by the client
+            </div>
+          </sc-if>
+          <sc-if value="{{preview.notAcceptedTerms}}" hint-placeholder-val="{{true}}">
+            <div class="accept-banner no">Awaiting client sign-off</div>
+          </sc-if>
+          <div class="sig-block">
+            <div class="sig-role">Signed for and on behalf of {{preview.clientNameShort}}</div>
+            <sc-if value="{{preview.hasClientSignature}}" hint-placeholder-val="{{false}}"><div class="sig-script">{{signature.clientName}}</div></sc-if>
+            <sc-if value="{{preview.hasNoClientSignature}}" hint-placeholder-val="{{true}}"><div class="sig-script empty">Awaiting client signature</div></sc-if>
+            <div class="sig-meta"><span>{{signature.clientTitle}}</span><span>{{preview.clientSignatureDateDisplay}}</span></div>
+          </div>
+          <div class="sig-block">
+            <div class="sig-role">Signed for and on behalf of SNN Sports</div>
+            <sc-if value="{{preview.hasSnnSignature}}" hint-placeholder-val="{{false}}"><div class="sig-script">{{signature.snnName}}</div></sc-if>
+            <sc-if value="{{preview.hasNoSnnSignature}}" hint-placeholder-val="{{true}}"><div class="sig-script empty">Awaiting SNN Sports signature</div></sc-if>
+            <div class="sig-meta"><span>{{signature.snnTitle}}</span><span>{{preview.snnSignatureDateDisplay}}</span></div>
+          </div>
+          <div class="sig-disclaimer">This page may be printed and signed by hand, signed digitally using your own e-signature tool, or completed here by typing a full name in place of a handwritten signature. This proposal, once signed by both parties, is intended to form a binding agreement on the terms set out on the preceding pages.</div>
+          <div class="pg-foot"><span>SNN Sports — Sponsorship Proposal</span><span>Page 10 of 10</span><span>{{preview.footerRight}}</span></div>
+        </div>
+
+      </div>
+      </sc-if>
+
+      <!-- BOTTOM BAR: wizard nav + autosave note + clear form (hidden on Preview tab) -->
+      <sc-if value="{{showBottomBar}}" hint-placeholder-val="{{true}}">
+      <div class="panel no-print">
+        <div class="bottom-bar-row">
+          <sc-if value="{{wizard.hasPrev}}" hint-placeholder-val="{{false}}">
+            <button class="link-btn" onClick="{{wizard.onPrev}}">← Back: {{wizard.prevLabel}}</button>
+          </sc-if>
+          <sc-if value="{{wizard.hasNoPrev}}" hint-placeholder-val="{{true}}"><span></span></sc-if>
+          <div class="panel-hint" style="text-align:center;">Changes save to this browser automatically as you type. Click Save to add this proposal to your list.</div>
+          <sc-if value="{{wizard.hasNext}}" hint-placeholder-val="{{true}}">
+            <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{wizard.onNext}}">Continue: {{wizard.nextLabel}} →</button>
+          </sc-if>
+          <sc-if value="{{wizard.hasNoNext}}" hint-placeholder-val="{{false}}"><span></span></sc-if>
+        </div>
+        <div class="bottom-bar-row" style="justify-content:flex-end;">
+          <sc-if value="{{confirmingClear}}" hint-placeholder-val="{{false}}">
+            <div class="confirm-bar"><span>Clear all fields on this proposal?</span><button class="link-btn danger" onClick="{{onConfirmClear}}">Yes, clear</button><button class="link-btn" onClick="{{onCancelClear}}">Cancel</button></div>
+          </sc-if>
+          <sc-if value="{{notConfirmingClear}}" hint-placeholder-val="{{true}}">
+            <button class="link-btn danger" onClick="{{onAskClear}}">Clear Form</button>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+
+    </sc-if>
+
+  </div>
+</div>
+

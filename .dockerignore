@@ -1,0 +1,8 @@
+node_modules
+e2e_downloads
+e2e_test.js
+e2e_test_bc.js
+server.log
+run_e2e.sh
+*.pdf
+.git
