@@ -1,4 +1,3 @@
-<style>
   :root{
     --snn-blue:#28428c; --snn-blue-dark:#1b2f63; --snn-blue-mid:#3a56a8; --snn-blue-tint:#eef1f9;
     --ink:#181a1f; --ink-soft:#565c6b; --ink-faint:#8a90a0;
@@ -269,4 +268,3 @@
     .shell{padding:16px;}
     .stats-grid{grid-template-columns:1fr;}
   }
-</style>
