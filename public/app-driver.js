@@ -175,7 +175,22 @@
     dispatch("change", e);
   });
   root.addEventListener("input", function (e) {
+    // The compiled markup only ever emits data-h-change (compile_template.py
+    // maps every onChange="..." to data-h-change, never data-h-input -- see
+    // raw_markup.html / compiled_render.js). That's correct for
+    // checkboxes/radios/selects, where the native "change" event already
+    // fires on every interaction. But for text-like <input>/<textarea>
+    // fields, the browser only fires "change" on blur -- NOT per keystroke
+    // -- so without this, typing into any text field never reaches app
+    // state until the user clicks away. Route "input" events through the
+    // same data-h-change handler lookup so state updates on every keystroke
+    // too. This can cause a handler to run twice for a given final value
+    // (once on "input", once more on the trailing "change" at blur), but
+    // that's harmless: the handler always sets state from the event
+    // target's current value, so re-invoking it with the same value is a
+    // no-op.
     dispatch("input", e);
+    dispatch("change", e);
   });
   root.addEventListener(
     "focusin",
