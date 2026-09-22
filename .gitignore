@@ -4,3 +4,4 @@ server.log
 run_e2e.sh
 *.pdf
 .DS_Store
+/data/

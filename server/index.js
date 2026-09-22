@@ -2,6 +2,7 @@ const path = require("path");
 const express = require("express");
 const { computeVals } = require("./compute-vals");
 const { buildProposalPdf } = require("./pdf");
+const proposalsStore = require("./proposals-store");
 
 const app = express();
 const PORT = process.env.PORT || 4173;
@@ -79,6 +80,46 @@ app.post("/api/generate-pdf", async (req, res) => {
   } catch (e) {
     console.error("PDF generation failed:", e);
     res.status(500).json({ error: "PDF generation failed: " + (e && e.message ? e.message : String(e)) });
+  }
+});
+
+// Shared proposals list -- every authorized user sees the same list, so a
+// proposal drafted or sent by one person can be found and reopened by
+// anyone else using the app. Backed by a small JSON file (see
+// server/proposals-store.js); on the hosted app that file lives on a
+// mounted persistent volume so it survives redeploys.
+app.get("/api/proposals", async (req, res) => {
+  try {
+    const proposals = await proposalsStore.listProposals();
+    res.json({ proposals });
+  } catch (e) {
+    console.error("Listing proposals failed:", e);
+    res.status(500).json({ error: "Could not load the proposals list: " + (e && e.message ? e.message : String(e)) });
+  }
+});
+
+app.put("/api/proposals/:id", async (req, res) => {
+  const id = req.params.id;
+  const proposal = req.body && req.body.proposal;
+  if (!proposal || typeof proposal !== "object" || proposal.id !== id) {
+    return res.status(400).json({ error: "Proposal body was missing, or its id didn't match the URL." });
+  }
+  try {
+    const saved = await proposalsStore.upsertProposal(proposal);
+    res.json({ proposal: saved });
+  } catch (e) {
+    console.error("Saving proposal failed:", e);
+    res.status(500).json({ error: "Could not save this proposal: " + (e && e.message ? e.message : String(e)) });
+  }
+});
+
+app.delete("/api/proposals/:id", async (req, res) => {
+  try {
+    const removed = await proposalsStore.deleteProposal(req.params.id);
+    res.json({ removed });
+  } catch (e) {
+    console.error("Deleting proposal failed:", e);
+    res.status(500).json({ error: "Could not delete this proposal: " + (e && e.message ? e.message : String(e)) });
   }
 });
 

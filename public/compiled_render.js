@@ -12,7 +12,10 @@ function renderApp(vals){
         </div>
       </div>
       ${(vals.hasCurrentName) ? `
-        <div class="current-name">${esc(vals.currentDisplayName)}</div>
+        <div class="current-name-wrap">
+          <div class="current-name">${esc(vals.currentDisplayName)}</div>
+          <div class="autosave-indicator ${esc(vals.autosave.className)}">${esc(vals.autosave.label)}</div>
+        </div>
       ` : ""}
       <div class="topbar-spacer"></div>
       ${(vals.flashMessage) ? `
@@ -34,10 +37,6 @@ function renderApp(vals){
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
           New
         </button>
-        <button class="btn btn-primary-on-blue" data-h-click="${H(vals.saveProposal)}">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
-          Save
-        </button>
       </div>
     </div>
     <div class="tabbar">
@@ -56,27 +55,22 @@ function renderApp(vals){
 
   <div class="shell">
 
-    ${(vals.hasPendingAction) ? `
-      <div class="panel unsaved-banner no-print">
-        <div class="unsaved-banner-text"><strong>Unsaved changes</strong> on the current proposal. Save before continuing, or discard them?</div>
-        <div class="unsaved-banner-actions">
-          <button class="btn" style="background:var(--snn-blue);color:#fff;" data-h-click="${H(vals.onSaveAndContinue)}">Save &amp; Continue</button>
-          <button class="link-btn danger" data-h-click="${H(vals.onDiscardAndContinue)}">Discard Changes</button>
-          <button class="link-btn" data-h-click="${H(vals.onCancelPending)}">Cancel</button>
-        </div>
-      </div>
-    ` : ""}
-
     <!-- ============ PROPOSALS LIST SCREEN ============ -->
     ${(vals.isListScreen) ? `
     <div class="panel">
       <div class="list-toolbar">
         <div>
           <h2 class="panel-title">Saved Proposals</h2>
-          <div class="panel-hint">Stored in this browser. Open one to continue editing, or start a new proposal.</div>
+          <div class="panel-hint">Shared with everyone using this app. Open one to continue editing, or start a new proposal.</div>
         </div>
         <button class="btn" style="background:var(--snn-blue);color:#fff;" data-h-click="${H(vals.newProposal)}">+ New Proposal</button>
       </div>
+
+      ${(vals.hasProposalsLoadError) ? `
+        <div class="no-print" style="margin-bottom:16px;padding:12px 14px;background:#fdf0f0;border:1px solid #c94747;border-radius:8px;font-size:12.5px;color:#7a1f1f;">
+          <strong>Could not load the shared proposals list:</strong> ${esc(vals.proposalsLoadError)} — showing what was loaded last.
+        </div>
+      ` : ""}
 
       <div class="pipeline-strip no-print">
         <div class="pipeline-stat">
@@ -681,7 +675,7 @@ function renderApp(vals){
             <button class="link-btn" data-h-click="${H(vals.wizard.onPrev)}">← Back: ${esc(vals.wizard.prevLabel)}</button>
           ` : ""}
           ${(vals.wizard.hasNoPrev) ? `<span></span>` : ""}
-          <div class="panel-hint" style="text-align:center;">Changes save to this browser automatically as you type. Click Save to add this proposal to your list.</div>
+          <div class="panel-hint" style="text-align:center;">Changes save automatically to the shared proposals list as you type — no need to click Save.</div>
           ${(vals.wizard.hasNext) ? `
             <button class="btn" style="background:var(--snn-blue);color:#fff;" data-h-click="${H(vals.wizard.onNext)}">Continue: ${esc(vals.wizard.nextLabel)} →</button>
           ` : ""}

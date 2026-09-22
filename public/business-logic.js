@@ -226,34 +226,137 @@ class Component extends DCLogic {
       pendingAction: null,
       proposalSearch: "",
       pdfStatus: "idle",
-      pdfError: ""
+      pdfError: "",
+      // "idle" | "pending" | "saving" | "saved" | "error" -- drives the small
+      // autosave indicator next to the proposal name in the top bar.
+      autosaveStatus: "idle",
+      proposalsLoadError: ""
     };
     this._flashTimer = null;
+    this._autosaveTimer = null;
   }
 
   componentDidMount(){
-    var proposals = [];
+    // The proposal you're actively editing resumes instantly from this
+    // browser's own storage -- no need to wait on the network for that.
+    // The shared list of everyone's proposals, though, only exists
+    // server-side (see loadProposalsFromServer), since it has to be the
+    // same list no matter which computer or browser you're using.
     var current = null;
-    try{
-      var rawP = localStorage.getItem(LS_PROPOSALS);
-      if(rawP) proposals = JSON.parse(rawP) || [];
-    }catch(e){ proposals = []; }
     try{
       var rawC = localStorage.getItem(LS_CURRENT);
       if(rawC) current = JSON.parse(rawC);
     }catch(e){ current = null; }
-
-    if(!proposals || proposals.length === 0){
-      var demo = makeDemoProposal();
-      proposals = [demo];
-      try{ localStorage.setItem(LS_PROPOSALS, JSON.stringify(proposals)); }catch(e){}
-    }
     if(!current || !current.id){
       current = makeBlankProposal();
     }
-    proposals = proposals.map(function(p){ return ensureShape(p); });
     current = ensureShape(current);
-    this.setState({ proposals: proposals, current: current });
+    this.setState({ current: current });
+
+    this.loadProposalsFromServer(true);
+  }
+
+  // Loads the shared proposals list from the server. On the very first-ever
+  // load (nobody has saved anything yet), seeds one demo proposal so the
+  // list isn't just an empty void -- purely a one-time onboarding nicety,
+  // so it's skipped on every subsequent load/refresh.
+  async loadProposalsFromServer(seedDemoIfEmpty){
+    var self = this;
+    try{
+      var resp = await fetch("/api/proposals");
+      if(!resp.ok) throw new Error("Server returned " + resp.status);
+      var body = await resp.json();
+      var proposals = (body.proposals || []).map(function(p){ return ensureShape(p); });
+      if(seedDemoIfEmpty && proposals.length === 0){
+        var demo = makeDemoProposal();
+        proposals = [demo];
+        try{
+          await fetch("/api/proposals/" + encodeURIComponent(demo.id), {
+            method: "PUT",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ proposal: demo })
+          });
+        }catch(e){
+          // Non-fatal -- the demo just shows locally this once rather than
+          // being persisted; not worth surfacing an error for.
+        }
+      }
+      self.setState({ proposals: proposals, proposalsLoadError: "" });
+    }catch(e){
+      self.setState({ proposalsLoadError: (e && e.message) ? e.message : String(e) });
+    }
+  }
+
+  // ---- autosave: keeps the server's copy of the current proposal in sync
+  // as you type, without a manual Save step. Local state + this browser's
+  // localStorage are always updated instantly (see commitCurrent); only the
+  // network write to the shared list is debounced, so a burst of keystrokes
+  // becomes one PUT a moment after you pause, not one per keystroke.
+  scheduleAutosave(current){
+    if(this._autosaveTimer){ clearTimeout(this._autosaveTimer); this._autosaveTimer = null; }
+    if(!this.hasMeaningfulContent(current)){
+      // Nothing worth putting on the shared list yet (e.g. a brand new,
+      // still-blank proposal) -- don't create a placeholder row for it.
+      this.setState({ autosaveStatus: "idle" });
+      return;
+    }
+    var self = this;
+    this.setState({ autosaveStatus: "pending" });
+    this._autosaveTimer = setTimeout(function(){
+      self.flushAutosave();
+    }, 900);
+  }
+
+  // Pushes the current proposal to the server right away, skipping any
+  // remaining debounce wait. Safe to call any time (including with nothing
+  // pending) -- it's a no-op unless there's meaningful content to save.
+  async flushAutosave(){
+    if(this._autosaveTimer){ clearTimeout(this._autosaveTimer); this._autosaveTimer = null; }
+    var current = this.state.current;
+    if(!this.hasMeaningfulContent(current)) return;
+    var self = this;
+    var toSave = Object.assign({}, current, { updatedAt: nowISO() });
+    this.setState({ autosaveStatus: "saving" });
+    try{
+      var resp = await fetch("/api/proposals/" + encodeURIComponent(toSave.id), {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ proposal: toSave })
+      });
+      if(!resp.ok) throw new Error("Server returned " + resp.status);
+      var body = await resp.json();
+      var saved = body.proposal || toSave;
+      // Only update the shared *list* entry from the server's response --
+      // never overwrite state.current with it. If the user kept typing
+      // while this request was in flight, state.current has already moved
+      // on, and clobbering it here would silently erase those keystrokes.
+      var list = self.state.proposals.slice();
+      var idx = list.findIndex(function(p){ return p.id === saved.id; });
+      if(idx >= 0) list[idx] = saved; else list.push(saved);
+      self.setState({ proposals: list, autosaveStatus: "saved" });
+    }catch(e){
+      self.setState({ autosaveStatus: "error" });
+    }
+  }
+
+  async deleteProposalOnServer(id){
+    try{
+      var resp = await fetch("/api/proposals/" + encodeURIComponent(id), { method: "DELETE" });
+      if(!resp.ok) throw new Error("Server returned " + resp.status);
+    }catch(e){
+      // The row was already removed from the local list for a snappy UI --
+      // if the server-side delete failed, reload from the server so the
+      // list reflects reality rather than silently drifting from it.
+      this.loadProposalsFromServer(false);
+    }
+  }
+
+  goList(){
+    this.flushAutosave();
+    this.setState({ screen: "list" });
+    // Pick up anything other users have saved or changed since this list
+    // was last loaded.
+    this.loadProposalsFromServer(false);
   }
 
   showFlash(msg){
@@ -318,11 +421,15 @@ class Component extends DCLogic {
   commitCurrent(current){
     this.setState({current: current});
     try{ localStorage.setItem(LS_CURRENT, JSON.stringify(current)); }catch(e){}
+    this.scheduleAutosave(current);
   }
 
+  // Updates the in-memory shared proposals list (e.g. after a delete, or a
+  // duplicate the caller is about to push to the server itself). The
+  // server -- not localStorage -- is the source of truth for this list now,
+  // since it has to be the same list for everyone using the app.
   persistProposals(list){
     this.setState({proposals: list});
-    try{ localStorage.setItem(LS_PROPOSALS, JSON.stringify(list)); }catch(e){}
   }
 
   // ---- client ----
@@ -345,8 +452,8 @@ class Component extends DCLogic {
     if(record.contactName) next.client.contactName = record.contactName;
     if(record.email) next.client.email = record.email;
     if(record.website) next.client.website = record.website;
-    this.setState({ current: next, crmSearch: "" });
-    try{ localStorage.setItem(LS_CURRENT, JSON.stringify(next)); }catch(e){}
+    this.setState({ crmSearch: "" });
+    this.commitCurrent(next);
     this.showFlash("Loaded " + record.name + " from the Deal Tracker");
   }
 
@@ -458,17 +565,10 @@ class Component extends DCLogic {
       this.persistProposals(proposals);
     }
     this.commitCurrent(next);
-  }
-
-  // ---- top-level actions ----
-  saveProposal(){
-    var current = Object.assign({}, this.state.current, { updatedAt: nowISO() });
-    var list = this.state.proposals.slice();
-    var idx = list.findIndex(function(p){ return p.id === current.id; });
-    if(idx >= 0) list[idx] = current; else list.push(current);
-    this.persistProposals(list);
-    this.commitCurrent(current);
-    this.showFlash("Proposal saved");
+    // A status change (e.g. marking something Sent) is a deliberate,
+    // discrete action -- push it to the shared list right away rather than
+    // waiting out the autosave debounce meant for smoothing over typing.
+    this.flushAutosave();
   }
 
   newProposal(){
@@ -511,11 +611,17 @@ class Component extends DCLogic {
     var list = this.state.proposals.concat([dup]);
     this.persistProposals(list);
     this.commitCurrent(dup);
+    // Push the duplicate to the shared list immediately -- otherwise it
+    // would only be visible to whoever made it until the autosave debounce
+    // (or a later navigation) got around to syncing it.
+    this.flushAutosave();
     this.setState({ screen:"builder", activeTab:"client" });
     this.showFlash("Duplicated");
   }
 
-  // ---- unsaved-changes guard ----
+  // Gates autosave: whether a proposal has enough real content to be worth
+  // a row on the shared list, rather than a placeholder for an empty,
+  // just-started form.
   hasMeaningfulContent(p){
     if(!p) return false;
     if(p.client.company || p.client.campaignName || p.client.contactName) return true;
@@ -524,20 +630,13 @@ class Component extends DCLogic {
     return false;
   }
 
-  isCurrentUnsaved(){
-    var c = this.state.current;
-    if(!this.hasMeaningfulContent(c)) return false;
-    var saved = this.state.proposals.find(function(p){ return p.id === c.id; });
-    if(!saved) return true;
-    return JSON.stringify(saved) !== JSON.stringify(c);
-  }
-
+  // With autosave, the proposal you're editing is always being kept in
+  // sync with the shared list in the background -- so switching to a
+  // different proposal never risks losing anything, it just needs to flush
+  // whatever's still pending first.
   requestNewProposal(){
-    if(this.isCurrentUnsaved()){
-      this.setState({ pendingAction: {kind:"new"} });
-    } else {
-      this.newProposal();
-    }
+    this.flushAutosave();
+    this.newProposal();
   }
 
   requestOpenProposal(id){
@@ -545,41 +644,13 @@ class Component extends DCLogic {
       this.setState({ screen:"builder", activeTab:"client" });
       return;
     }
-    if(this.isCurrentUnsaved()){
-      this.setState({ pendingAction: {kind:"open", id:id} });
-    } else {
-      this.openProposal(id);
-    }
+    this.flushAutosave();
+    this.openProposal(id);
   }
 
   requestDuplicateProposal(id){
-    if(this.isCurrentUnsaved()){
-      this.setState({ pendingAction: {kind:"duplicate", id:id} });
-    } else {
-      this.duplicateProposal(id);
-    }
-  }
-
-  runPendingAction(){
-    var action = this.state.pendingAction;
-    this.setState({ pendingAction: null });
-    if(!action) return;
-    if(action.kind === "new") this.newProposal();
-    else if(action.kind === "open") this.openProposal(action.id);
-    else if(action.kind === "duplicate") this.duplicateProposal(action.id);
-  }
-
-  resolvePendingSave(){
-    this.saveProposal();
-    this.runPendingAction();
-  }
-
-  resolvePendingDiscard(){
-    this.runPendingAction();
-  }
-
-  cancelPendingAction(){
-    this.setState({ pendingAction: null });
+    this.flushAutosave();
+    this.duplicateProposal(id);
   }
 
   // ---- proposals list search ----
@@ -598,6 +669,7 @@ class Component extends DCLogic {
     this.persistProposals(list);
     this.setState({ deleteConfirmId: null });
     this.showFlash("Proposal deleted");
+    this.deleteProposalOnServer(id);
   }
 
   askClear(){ this.setState({ confirmingClear: true }); }
@@ -605,8 +677,8 @@ class Component extends DCLogic {
   confirmClear(){
     var fresh = makeBlankProposal();
     fresh.id = this.state.current.id;
-    this.setState({ current: fresh, confirmingClear: false });
-    try{ localStorage.setItem(LS_CURRENT, JSON.stringify(fresh)); }catch(e){}
+    this.commitCurrent(fresh);
+    this.setState({ confirmingClear: false });
     this.showFlash("Form cleared");
   }
 
@@ -955,22 +1027,24 @@ class Component extends DCLogic {
     var isBuilderScreen = s.screen === "builder";
     var isListScreen = s.screen === "list";
 
+    var AUTOSAVE_LABELS = { idle:"", pending:"Saving…", saving:"Saving…", saved:"Saved", error:"Save failed — will retry" };
+    var AUTOSAVE_CLASSES = { idle:"", pending:"is-saving", saving:"is-saving", saved:"is-saved", error:"is-error" };
+    var autosave = {
+      label: AUTOSAVE_LABELS[s.autosaveStatus] || "",
+      className: AUTOSAVE_CLASSES[s.autosaveStatus] || ""
+    };
+
     return {
       hasCurrentName: !!(c.client.company || c.client.campaignName),
       currentDisplayName: (c.client.company || "Untitled") + (c.client.campaignName ? (" — " + c.client.campaignName) : ""),
+      autosave: autosave,
       flashMessage: s.flash,
       statusOptions: statusOptions,
       statusValue: c.status,
       onStatusChange: function(e){ self.updateStatus(e.target.value); },
-      goList: function(){ self.setState({screen:"list"}); },
+      goList: function(){ self.goList(); },
       proposalCount: s.proposals.length,
       newProposal: function(){ self.requestNewProposal(); },
-      saveProposal: function(){ self.saveProposal(); },
-
-      hasPendingAction: !!s.pendingAction,
-      onSaveAndContinue: function(){ self.resolvePendingSave(); },
-      onDiscardAndContinue: function(){ self.resolvePendingDiscard(); },
-      onCancelPending: function(){ self.cancelPendingAction(); },
 
       isBuilderScreen: isBuilderScreen,
       isListScreen: isListScreen,
@@ -1016,6 +1090,8 @@ class Component extends DCLogic {
       hasProposals: proposalRows.length > 0,
       hasNoProposalsAtAll: s.proposals.length === 0,
       hasNoSearchResults: proposalSearchTerm.length > 0 && proposalRows.length === 0,
+      hasProposalsLoadError: !!s.proposalsLoadError,
+      proposalsLoadError: s.proposalsLoadError,
       proposalRows: proposalRows,
       proposalsSummary: proposalsSummary,
       proposalSearchValue: s.proposalSearch,

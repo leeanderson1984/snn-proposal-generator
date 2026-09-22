@@ -11,7 +11,10 @@
         </div>
       </div>
       <sc-if value="{{hasCurrentName}}" hint-placeholder-val="{{true}}">
-        <div class="current-name">{{currentDisplayName}}</div>
+        <div class="current-name-wrap">
+          <div class="current-name">{{currentDisplayName}}</div>
+          <div class="autosave-indicator {{autosave.className}}">{{autosave.label}}</div>
+        </div>
       </sc-if>
       <div class="topbar-spacer"></div>
       <sc-if value="{{flashMessage}}" hint-placeholder-val="{{true}}">
@@ -33,10 +36,6 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
           New
         </button>
-        <button class="btn btn-primary-on-blue" onClick="{{saveProposal}}">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
-          Save
-        </button>
       </div>
     </div>
     <div class="tabbar">
@@ -55,27 +54,22 @@
 
   <div class="shell">
 
-    <sc-if value="{{hasPendingAction}}" hint-placeholder-val="{{false}}">
-      <div class="panel unsaved-banner no-print">
-        <div class="unsaved-banner-text"><strong>Unsaved changes</strong> on the current proposal. Save before continuing, or discard them?</div>
-        <div class="unsaved-banner-actions">
-          <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{onSaveAndContinue}}">Save &amp; Continue</button>
-          <button class="link-btn danger" onClick="{{onDiscardAndContinue}}">Discard Changes</button>
-          <button class="link-btn" onClick="{{onCancelPending}}">Cancel</button>
-        </div>
-      </div>
-    </sc-if>
-
     <!-- ============ PROPOSALS LIST SCREEN ============ -->
     <sc-if value="{{isListScreen}}" hint-placeholder-val="{{false}}">
     <div class="panel">
       <div class="list-toolbar">
         <div>
           <h2 class="panel-title">Saved Proposals</h2>
-          <div class="panel-hint">Stored in this browser. Open one to continue editing, or start a new proposal.</div>
+          <div class="panel-hint">Shared with everyone using this app. Open one to continue editing, or start a new proposal.</div>
         </div>
         <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{newProposal}}">+ New Proposal</button>
       </div>
+
+      <sc-if value="{{hasProposalsLoadError}}" hint-placeholder-val="{{false}}">
+        <div class="no-print" style="margin-bottom:16px;padding:12px 14px;background:#fdf0f0;border:1px solid #c94747;border-radius:8px;font-size:12.5px;color:#7a1f1f;">
+          <strong>Could not load the shared proposals list:</strong> {{proposalsLoadError}} — showing what was loaded last.
+        </div>
+      </sc-if>
 
       <div class="pipeline-strip no-print">
         <div class="pipeline-stat">
@@ -680,7 +674,7 @@
             <button class="link-btn" onClick="{{wizard.onPrev}}">← Back: {{wizard.prevLabel}}</button>
           </sc-if>
           <sc-if value="{{wizard.hasNoPrev}}" hint-placeholder-val="{{true}}"><span></span></sc-if>
-          <div class="panel-hint" style="text-align:center;">Changes save to this browser automatically as you type. Click Save to add this proposal to your list.</div>
+          <div class="panel-hint" style="text-align:center;">Changes save automatically to the shared proposals list as you type — no need to click Save.</div>
           <sc-if value="{{wizard.hasNext}}" hint-placeholder-val="{{true}}">
             <button class="btn" style="background:var(--snn-blue);color:#fff;" onClick="{{wizard.onNext}}">Continue: {{wizard.nextLabel}} →</button>
           </sc-if>
